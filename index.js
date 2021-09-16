@@ -1,4 +1,5 @@
 require("dotenv").config()
+const axios = require("axios").default
 const ccxt = require("ccxt")
 
 const exchangeArgs = {
@@ -8,8 +9,10 @@ const exchangeArgs = {
 	enableRateLimit: true,
 }
 
-const exchange = new ccxt.binance(exchangeArgs)
+const exchange = new ccxt.gemini(exchangeArgs)
 const tradingPair = process.env.tradingPair
+let crypto = tradingPair.split('/')[0]
+let stableCoin = tradingPair.split('/')[1]
 
 validate()
 async function validate() {
@@ -33,8 +36,11 @@ async function validate() {
 
 async function start() {
 	// Get % change of trading pair over last 24 hours
+	get24HrChange()
+}
+	
+async function checkForDip(actualChange24hr) {
 	let fetchTicker = await exchange.fetchTicker(tradingPair)
-	let actualChange24hr = fetchTicker.percentage
 	let targetChange24hr = parseInt(process.env.percentageChangeTarget)
 
 	// Check if actual % change over 24 hours is greater than the target
@@ -56,9 +62,6 @@ async function start() {
 async function buy(fetchTicker) {
 	let balance = await exchange.fetchBalance()
 	let dollarBalance
-
-	let crypto = tradingPair.split('/')[0]
-	let stableCoin = tradingPair.split('/')[1]
 
 	if (stableCoin === 'USDT') {
 		dollarBalance = balance.USDT.free
@@ -97,3 +100,20 @@ async function buy(fetchTicker) {
 
 // Helper function to sleep for t milliseconds
 const sleep = (t) => ({ then: (r) => setTimeout(r, t) })
+
+function get24HrChange() {
+	axios
+		.get('https://api.coingecko.com/api/v3/simple/price', {
+			params: {
+				ids: 'ethereum',
+				vs_currencies: 'usd',
+				include_24hr_change: true
+			}
+		})
+		.then(async function(res) {
+			checkForDip(await res.data.ethereum.usd_24h_change)
+		})
+		.catch(function (error) {
+			console.log('Error getting 24hr change', error)
+		})		
+}

@@ -10,6 +10,7 @@
   "author": "Greg Skriloff",
   "license": "ISC",
   "dependencies": {
+    "axios": "^0.21.4",
     "ccxt": "^1.56.40",
     "dotenv": "^10.0.0"
   }
